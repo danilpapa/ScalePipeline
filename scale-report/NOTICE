@@ -1,0 +1,10 @@
+scale-report
+
+The `xiaomi_home` body-composition model (src/model/xiaomi_home.rs) implements
+formulas extracted from the Xiaomi S400 scale firmware and published by the
+bodymiscale project:
+
+  bodymiscale — https://github.com/dckiller51/bodymiscale
+  metrics/xiaomi_home.py, tests/.../test_xiaomi_home.py
+  Licensed under the Apache License, Version 2.0
+  https://www.apache.org/licenses/LICENSE-2.0
