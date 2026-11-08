@@ -1,8 +1,9 @@
 # scale-report
 
-Turns raw Xiaomi S400 measurements (`scale-data/weights/*.json`) into body
-composition, trends and a short report for the fitness agent.
-Spec: `../dock/ТЗ обработчик данных весов S400.md`.
+CLI and Rust library that turns raw Xiaomi S400 measurements
+(`scale-data/weights/*.json`) into body composition, trends and short reports.
+Part of [ScalePipeline](../README.md); start there for the hardware setup.
+Design spec (in Russian): [`../dock/`](../dock/).
 
 ```sh
 cargo build --release
@@ -116,7 +117,7 @@ GitHub Release as `scale-report-x86_64-linux`:
 git tag v0.1.0 && git push origin v0.1.0
 
 # in the scheduled task
-gh release download v0.1.0 -R danilpapa/ScalePipeline -p scale-report-x86_64-linux
+gh release download v0.1.0 -R <owner>/ScalePipeline -p scale-report-x86_64-linux
 chmod +x scale-report-x86_64-linux
 ```
 
@@ -125,3 +126,8 @@ chmod +x scale-report-x86_64-linux
 `cargo test` runs the golden measurements (§8.1), property tests, all
 pipeline scenarios (§8.2) and snapshots (`cargo insta review` after an
 intentional output change).
+
+## License
+
+Apache-2.0 — see [`../LICENSE`](../LICENSE). The `xiaomi_home` formulas come
+from bodymiscale (Apache-2.0); attribution is in [`NOTICE`](NOTICE).
