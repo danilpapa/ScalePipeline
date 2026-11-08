@@ -72,7 +72,7 @@ script:
             - http_request.send:
                 method: PUT
                 url: !lambda |-
-                  return "https://api.github.com/repos/danilpapa/scale-data/contents/weights/"
+                  return "https://api.github.com/repos/danilpapa/ScaleData/contents/weights/"
                          + id(sntp_time).now().strftime("%Y-%m-%dT%H-%M-%S") + ".json";
                 request_headers:
                   Authorization: !secret gh_auth
