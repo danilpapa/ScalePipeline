@@ -1,0 +1,108 @@
+---
+source: tests/cli.rs
+expression: json
+---
+{
+  "report_version": 1,
+  "algo_version": "0.1.0",
+  "model": "xiaomi_home",
+  "generated_for": "2026-11-09",
+  "profile_hash": "sha256:f00d40acaa2a3bb92aec2999026ce8e369e8b0b7753b501b498be20b1326f3e9",
+  "latest": {
+    "date": "2026-11-09",
+    "ts": "2026-11-09T07:30:00+03:00",
+    "status": "ok",
+    "flags": [],
+    "note": null,
+    "weight_kg": 78.8,
+    "body_fat_pct": 22.9,
+    "fat_mass_kg": 18.0,
+    "lean_mass_kg": 60.8,
+    "muscle_kg": 57.6,
+    "skeletal_muscle_kg": 31.2,
+    "water_pct": 54.8,
+    "protein_pct": 17.4,
+    "bone_kg": 3.2,
+    "visceral_fat": 9,
+    "bmr_kcal": 1683,
+    "metabolic_age": 43,
+    "bmi": 25.4,
+    "ffmi": 19.6,
+    "ffmi_normalized": 19.9,
+    "hydration_index": 0.912,
+    "heart_rate": 68
+  },
+  "trend": {
+    "weight_kg": 79.2,
+    "fat_mass_kg": 18.2,
+    "lean_mass_kg": 60.9,
+    "skeletal_muscle_kg": 31.1,
+    "body_fat_pct": 23.0,
+    "visceral_fat": 9.5,
+    "hydration_index": 0.914,
+    "heart_rate": null
+  },
+  "rates": {
+    "weight_kg_per_week_14d": null,
+    "weight_pct_per_week_14d": null,
+    "weight_kg_per_week_28d": null,
+    "weight_pct_per_week_28d": null,
+    "fat_mass_kg_per_week_28d": null,
+    "lean_mass_kg_per_week_28d": null
+  },
+  "deltas": {
+    "weight_kg": {
+      "d7": null,
+      "d30": null,
+      "d90": null,
+      "significance": "insufficient_data"
+    },
+    "fat_mass_kg": {
+      "d7": null,
+      "d30": null,
+      "d90": null,
+      "significance": "insufficient_data"
+    },
+    "lean_mass_kg": {
+      "d7": null,
+      "d30": null,
+      "d90": null,
+      "significance": "insufficient_data"
+    },
+    "skeletal_muscle_kg": {
+      "d7": null,
+      "d30": null,
+      "d90": null,
+      "significance": "insufficient_data"
+    },
+    "body_fat_pct": {
+      "d7": null,
+      "d30": null,
+      "d90": null,
+      "significance": "insufficient_data"
+    }
+  },
+  "phase": {
+    "detected": null,
+    "goal": "maintain",
+    "lean_share_28d": null
+  },
+  "flags": [
+    "warming_up"
+  ],
+  "data_quality": {
+    "days_measured_7d": 5,
+    "days_measured_28d": 5,
+    "morning_share_28d": 0.8,
+    "impedance_share_28d": 0.8,
+    "days_since_last": 0,
+    "files_total": 7,
+    "rejected": [
+      {
+        "file": "2026-11-09T07-31-00.json",
+        "code": "parse_error"
+      }
+    ],
+    "warnings": []
+  }
+}

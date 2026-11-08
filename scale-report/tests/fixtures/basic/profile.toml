@@ -1,0 +1,6 @@
+sex = "male"
+birth_date = 1980-05-14
+height_cm = 176.0
+timezone = "Europe/Moscow"
+morning_window = [4, 12]
+goal = "maintain"

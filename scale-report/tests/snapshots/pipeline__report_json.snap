@@ -1,0 +1,102 @@
+---
+source: tests/pipeline.rs
+assertion_line: 450
+expression: out.report.json()
+---
+{
+  "report_version": 1,
+  "algo_version": "0.1.0",
+  "model": "xiaomi_home",
+  "generated_for": "2026-11-09",
+  "profile_hash": "sha256:532b536f06e8322bd96fd2ce69711c597a09a7e6f6f2fc02275786ba7f23216e",
+  "latest": {
+    "date": "2026-11-09",
+    "ts": "2026-11-09T07:30:00+03:00",
+    "status": "ok",
+    "flags": [],
+    "note": null,
+    "weight_kg": 81.0,
+    "body_fat_pct": 25.0,
+    "fat_mass_kg": 20.3,
+    "lean_mass_kg": 60.7,
+    "muscle_kg": 57.5,
+    "skeletal_muscle_kg": 30.0,
+    "water_pct": 51.1,
+    "protein_pct": 19.1,
+    "bone_kg": 3.2,
+    "visceral_fat": 11,
+    "bmr_kcal": 1681,
+    "metabolic_age": 44,
+    "bmi": 26.1,
+    "ffmi": 19.6,
+    "ffmi_normalized": 19.8,
+    "hydration_index": 0.89,
+    "heart_rate": 62
+  },
+  "trend": {
+    "weight_kg": 81.1,
+    "fat_mass_kg": 20.3,
+    "lean_mass_kg": 60.7,
+    "skeletal_muscle_kg": 30.0,
+    "body_fat_pct": 25.0,
+    "visceral_fat": 11.0,
+    "hydration_index": 0.89,
+    "heart_rate": 66
+  },
+  "rates": {
+    "weight_kg_per_week_14d": -0.38,
+    "weight_pct_per_week_14d": -0.47,
+    "weight_kg_per_week_28d": -0.46,
+    "weight_pct_per_week_28d": -0.56,
+    "fat_mass_kg_per_week_28d": -0.26,
+    "lean_mass_kg_per_week_28d": -0.17
+  },
+  "deltas": {
+    "weight_kg": {
+      "d7": -0.3,
+      "d30": -1.7,
+      "d90": null,
+      "significance": "real"
+    },
+    "fat_mass_kg": {
+      "d7": 0.1,
+      "d30": -0.8,
+      "d90": null,
+      "significance": "within_noise"
+    },
+    "lean_mass_kg": {
+      "d7": -0.1,
+      "d30": -0.6,
+      "d90": null,
+      "significance": "within_noise"
+    },
+    "skeletal_muscle_kg": {
+      "d7": 0.0,
+      "d30": -0.1,
+      "d90": null,
+      "significance": "within_noise"
+    },
+    "body_fat_pct": {
+      "d7": 0.0,
+      "d30": -0.6,
+      "d90": null,
+      "significance": "within_noise"
+    }
+  },
+  "phase": {
+    "detected": "cut",
+    "goal": "cut",
+    "lean_share_28d": 0.41
+  },
+  "flags": [],
+  "data_quality": {
+    "days_measured_7d": 7,
+    "days_measured_28d": 28,
+    "morning_share_28d": 1.0,
+    "impedance_share_28d": 1.0,
+    "days_since_last": 0,
+    "files_total": 60,
+    "rejected": [],
+    "warnings": []
+  }
+}

@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3de3d0ec422237d458a638f7f88bb9ac7c6fd11371bcdf12cf2832d456639bf6 # shrinks to i = BodyInput { sex: Male, age: 77, height_cm: 180.44074188407856, weight_kg: 151.79789882114068, z50: Some(609.5245499749054), z250: Some(487.6196399799244) }
