@@ -1,0 +1,105 @@
+esphome:
+  name: scale-bridge
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/Moscow
+
+esp32_ble_tracker:
+  scan_parameters:
+    active: false
+
+http_request:
+  verify_ssl: true
+  timeout: 15s
+
+output:
+  - platform: gpio
+    pin: GPIO2
+    id: led
+
+sensor:
+  - platform: xiaomi_body_scale
+    mac_address: !secret scale_mac
+    bindkey: !secret scale_bindkey
+    weight:
+      id: weight
+      on_value:
+        then:
+          - script.execute: upload
+    impedance_low:
+      id: imp_low
+      filters:
+        - timeout: 60s
+    impedance_high:
+      id: imp_high
+      filters:
+        - timeout: 60s
+    heart_rate:
+      id: hr
+      filters:
+        - timeout: 60s
+    profile_id:
+      id: profile
+      filters:
+        - timeout: 60s
+
+script:
+  - id: upload
+    mode: restart
+    then:
+      - delay: 10s
+      - if:
+          condition:
+            lambda: 'return !std::isnan(id(weight).state) && id(sntp_time).now().is_valid();'
+          then:
+            - http_request.send:
+                method: PUT
+                url: !lambda |-
+                  return "https://api.github.com/repos/danilpapa/scale-data/contents/weights/"
+                         + id(sntp_time).now().strftime("%Y-%m-%dT%H-%M-%S") + ".json";
+                request_headers:
+                  Authorization: !secret gh_auth
+                  User-Agent: scale-bridge
+                  Accept: application/vnd.github+json
+                  Content-Type: application/json
+                body: !lambda |-
+                  auto f = [](float v) {
+                    return std::isnan(v) ? std::string("null") : str_sprintf("%.2f", v);
+                  };
+                  std::string json = "{\"schema\":2,\"fw\":\"scale-bridge/2\",\"ts\":\"" + id(sntp_time).now().strftime("%Y-%m-%dT%H:%M:%S%z") + "\""
+                    + ",\"weight\":" + f(id(weight).state)
+                    + ",\"impedance_low\":" + f(id(imp_low).state)
+                    + ",\"impedance_high\":" + f(id(imp_high).state)
+                    + ",\"heart_rate\":" + f(id(hr).state)
+                    + ",\"profile_id\":" + (std::isnan(id(profile).state) ? std::string("null") : str_sprintf("%d", (int) id(profile).state)) + "}";
+                  std::string b64 = base64_encode((const uint8_t *) json.data(), json.size());
+                  return "{\"message\":\"weight\",\"content\":\"" + b64 + "\"}";
+                on_response:
+                  then:
+                    - logger.log:
+                        format: "GitHub status: %d"
+                        args: ['response->status_code']
+                    - if:
+                        condition:
+                          lambda: 'return response->status_code == 201;'
+                        then:
+                          - output.turn_on: led
+                          - delay: 3s
+                          - output.turn_off: led

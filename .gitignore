@@ -1,0 +1,4 @@
+firmware/secrets.yaml
+firmware/.esphome/
+*.DS_STORE
+
