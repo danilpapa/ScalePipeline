@@ -11,6 +11,17 @@ use sha2::{Digest, Sha256};
 use crate::Error;
 use crate::model::Sex;
 
+/// Environment variables → profile fields. The first three are required
+/// unless `profile.toml` provides them.
+pub const ENV_VARS: [(&str, &str); 6] = [
+    ("PROFILE_SEX", "sex"),
+    ("PROFILE_BIRTH_DATE", "birth_date"),
+    ("PROFILE_HEIGHT_CM", "height_cm"),
+    ("PROFILE_TIMEZONE", "timezone"),
+    ("PROFILE_GOAL", "goal"),
+    ("PROFILE_ID", "profile_id"),
+];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Goal {
@@ -29,7 +40,8 @@ pub struct Profile {
     /// Scale user slot; measurements from other slots are excluded.
     #[serde(default)]
     pub profile_id: Option<i64>,
-    /// IANA name, e.g. `Europe/Moscow`: day boundary and morning window.
+    /// IANA name: day boundary and morning window. Default `Europe/Moscow`.
+    #[serde(default = "default_timezone")]
     pub timezone: String,
     /// `[start, end)` local hours for the daily measurement.
     #[serde(default = "default_morning_window")]
@@ -38,6 +50,10 @@ pub struct Profile {
     pub goal: Option<Goal>,
     #[serde(default)]
     pub thresholds: Thresholds,
+}
+
+fn default_timezone() -> String {
+    "Europe/Moscow".into()
 }
 
 fn default_morning_window() -> [u32; 2] {
@@ -56,8 +72,59 @@ fn de_date<'de, D: Deserializer<'de>>(d: D) -> Result<NaiveDate, D::Error> {
 
 impl Profile {
     pub fn from_toml(s: &str) -> Result<Self, Error> {
-        let p: Profile =
-            toml::from_str(s).map_err(|e| Error::Config(format!("profile.toml: {e}")))?;
+        Self::resolve(Some(s), |_| None)
+    }
+
+    /// Build the profile from `profile.toml` (optional) and environment
+    /// variables ([`ENV_VARS`]); env wins over the file. `env` is a lookup
+    /// function so the core stays free of global state —
+    /// pass `|k| std::env::var(k).ok()` in real use.
+    pub fn resolve(
+        toml_text: Option<&str>,
+        env: impl Fn(&str) -> Option<String>,
+    ) -> Result<Self, Error> {
+        let mut table: toml::Table = match toml_text {
+            Some(text) => text
+                .parse()
+                .map_err(|e| Error::Config(format!("profile.toml: {e}")))?,
+            None => toml::Table::new(),
+        };
+
+        let mut from_env = false;
+        for (var, key) in ENV_VARS {
+            let Some(raw) = env(var) else { continue };
+            let raw = raw.trim();
+            if raw.is_empty() {
+                continue;
+            }
+            let not_a = |what: &str| Error::Config(format!("{var}={raw:?} is not {what}"));
+            let value = match key {
+                "height_cm" => toml::Value::Float(raw.parse().map_err(|_| not_a("a number"))?),
+                "profile_id" => toml::Value::Integer(raw.parse().map_err(|_| not_a("an integer"))?),
+                _ => toml::Value::String(raw.to_owned()),
+            };
+            table.insert(key.into(), value);
+            from_env = true;
+        }
+
+        if toml_text.is_none() && !from_env {
+            return Err(Error::Config(
+                "no profile: create profile.toml or set PROFILE_SEX, PROFILE_BIRTH_DATE, \
+                 PROFILE_HEIGHT_CM"
+                    .into(),
+            ));
+        }
+        for (var, key) in &ENV_VARS[..3] {
+            if !table.contains_key(*key) {
+                return Err(Error::Config(format!(
+                    "profile: `{key}` is missing — set it in profile.toml or {var}"
+                )));
+            }
+        }
+
+        let p: Profile = toml::Value::Table(table)
+            .try_into()
+            .map_err(|e| Error::Config(format!("profile: {e}")))?;
         p.check()?;
         Ok(p)
     }
@@ -227,6 +294,90 @@ mod tests {
         let d = |s| NaiveDate::parse_from_str(s, "%Y-%m-%d").unwrap();
         assert_eq!(p.age_on(d("2026-05-13")), 22);
         assert_eq!(p.age_on(d("2026-05-14")), 23);
+    }
+
+    fn env(vars: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
+        let vars: Vec<(String, String)> = vars
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        move |k| {
+            vars.iter()
+                .rfind(|(name, _)| name == k) // later entries win
+                .map(|(_, v)| v.clone())
+        }
+    }
+
+    const ENV_PROFILE: &[(&str, &str)] = &[
+        ("PROFILE_SEX", "female"),
+        ("PROFILE_BIRTH_DATE", "1995-02-03"),
+        ("PROFILE_HEIGHT_CM", "165"),
+    ];
+
+    #[test]
+    fn env_only_profile_with_defaults() {
+        let p = Profile::resolve(None, env(ENV_PROFILE)).unwrap();
+        assert_eq!(p.sex, Sex::Female);
+        assert_eq!(p.birth_date, NaiveDate::from_ymd_opt(1995, 2, 3).unwrap());
+        assert_eq!(p.height_cm, 165.0);
+        assert_eq!(p.timezone, "Europe/Moscow");
+        assert_eq!((p.goal, p.profile_id), (None, None));
+    }
+
+    #[test]
+    fn env_overrides_file() {
+        let vars = [
+            ("PROFILE_HEIGHT_CM", "181.5"),
+            ("PROFILE_GOAL", "bulk"),
+            ("PROFILE_ID", "2"),
+            ("PROFILE_TIMEZONE", "Asia/Yekaterinburg"),
+            ("PROFILE_SEX", ""), // empty = unset, the file value stays
+        ];
+        let p = Profile::resolve(Some(PROFILE), env(&vars)).unwrap();
+        assert_eq!(p.sex, Sex::Male);
+        assert_eq!(p.height_cm, 181.5);
+        assert_eq!(p.goal, Some(Goal::Bulk));
+        assert_eq!(p.profile_id, Some(2));
+        assert_eq!(p.timezone, "Asia/Yekaterinburg");
+        assert_eq!(p.thresholds.noise_fat_kg, 1.5, "file-only fields are kept");
+    }
+
+    #[test]
+    fn no_file_no_env_is_config_error() {
+        let err = Profile::resolve(None, env(&[])).unwrap_err();
+        assert!(err.to_string().contains("PROFILE_SEX"), "{err}");
+    }
+
+    #[test]
+    fn missing_required_names_the_variable() {
+        let err = Profile::resolve(None, env(&ENV_PROFILE[..2])).unwrap_err();
+        assert!(err.to_string().contains("PROFILE_HEIGHT_CM"), "{err}");
+    }
+
+    #[test]
+    fn bad_env_values_are_config_errors() {
+        let bad = |k: &'static str, v: &'static str| {
+            let mut vars = ENV_PROFILE.to_vec();
+            vars.push((k, v));
+            Profile::resolve(None, env(&vars))
+        };
+        assert!(matches!(
+            bad("PROFILE_HEIGHT_CM", "tall"),
+            Err(Error::Config(_))
+        ));
+        assert!(matches!(bad("PROFILE_SEX", "other"), Err(Error::Config(_))));
+        assert!(matches!(
+            bad("PROFILE_BIRTH_DATE", "03.02.1995"),
+            Err(Error::Config(_))
+        ));
+        assert!(matches!(
+            bad("PROFILE_GOAL", "shred"),
+            Err(Error::Config(_))
+        ));
+        assert!(matches!(
+            bad("PROFILE_TIMEZONE", "Mars/Olympus"),
+            Err(Error::Config(_))
+        ));
     }
 
     #[test]

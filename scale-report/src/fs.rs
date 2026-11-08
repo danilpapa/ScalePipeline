@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use crate::profile::{Overrides, Profile, parse_overrides};
 use crate::{Error, InputFile, Output, report};
 
-/// Contents of a `scale-data` directory.
+/// Contents of a `scale-data` directory (profile fields may come from env).
 #[derive(Debug)]
 pub struct DataDir {
     pub profile: Profile,
@@ -20,10 +20,14 @@ pub struct DataDir {
 pub fn load(dir: impl AsRef<Path>) -> Result<DataDir> {
     let dir = dir.as_ref();
 
+    // profile.toml is optional when the PROFILE_* env variables are set.
     let profile_path = dir.join("profile.toml");
-    let text = std::fs::read_to_string(&profile_path)
-        .map_err(|e| Error::Config(format!("{}: {e}", profile_path.display())))?;
-    let profile = Profile::from_toml(&text)?;
+    let profile_text = match std::fs::read_to_string(&profile_path) {
+        Ok(text) => Some(text),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+        Err(e) => return Err(Error::Config(format!("{}: {e}", profile_path.display())).into()),
+    };
+    let profile = Profile::resolve(profile_text.as_deref(), |k| std::env::var(k).ok())?;
 
     let overrides_path = dir.join("overrides.toml");
     let overrides = match std::fs::read_to_string(&overrides_path) {

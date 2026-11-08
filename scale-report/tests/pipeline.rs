@@ -475,3 +475,80 @@ fn year_of_data_is_fast() {
     );
     assert!(t.elapsed().as_secs_f64() < 1.0, "{:?}", t.elapsed());
 }
+
+#[test]
+fn data_quality_lists_excluded_files_with_reason() {
+    let overrides = parse_overrides("[\"2026-11-04T07-30-00.json\"]\nexclude = true\n").unwrap();
+    let mut files = vec![
+        meas("2026-11-01T07:30:00", 80.0, Some((570.0, 510.0))),
+        meas("2026-11-02T07:30:00", 80.1, Some((571.0, 511.0))),
+        meas("2026-11-03T07:30:00", 79.9, Some((572.0, 512.0))),
+        meas("2026-11-04T07:30:00", 80.0, Some((573.0, 513.0))), // manual_exclude
+        meas("2026-11-05T07:30:00", 80.0, None),                 // duplicate (less complete)
+        meas("2026-11-05T07:32:00", 80.1, Some((574.0, 514.0))),
+        meas("2026-11-05T19:00:00", 62.0, Some((650.0, 580.0))), // foreign_weight
+        InputFile::new("2026-11-06T07-30-00.json", "{"),         // parse_error (rejected)
+    ];
+    files.push(meas_json(
+        "2026-11-06T08:00:00",
+        json!({
+            "schema": 2, "ts": "2026-11-06T08:00:00+0300", "weight": 55.0, "profile_id": 3,
+        }),
+    )); // foreign_profile
+    let out = run_with(&files, &overrides, "2026-11-06").unwrap();
+    let listed: Vec<(&str, Code)> = out
+        .report
+        .data_quality
+        .rejected
+        .iter()
+        .map(|d| (d.file.as_str(), d.code))
+        .collect();
+    assert_eq!(
+        listed,
+        [
+            ("2026-11-04T07-30-00.json", Code::ManualExclude),
+            ("2026-11-05T07-30-00.json", Code::Duplicate),
+            ("2026-11-05T19-00-00.json", Code::ForeignWeight),
+            ("2026-11-06T07-30-00.json", Code::ParseError),
+            ("2026-11-06T08-00-00.json", Code::ForeignProfile),
+        ]
+    );
+    // And in report.json they carry the code string.
+    let json: serde_json::Value = serde_json::from_str(&out.report.json()).unwrap();
+    assert_eq!(
+        json["data_quality"]["rejected"][2]["code"],
+        "foreign_weight"
+    );
+}
+
+#[test]
+fn four_day_gap_keeps_28_day_rates() {
+    // 28 mornings ending today, with 4 missing days in the middle (24 points).
+    let today = date("2026-11-09");
+    let mut seed = 7;
+    let files: Vec<InputFile> = (0..28)
+        .rev()
+        .filter(|back| !(12..16).contains(back))
+        .map(|back| {
+            let day = today - Duration::days(back);
+            let t = format!("{day}T07:30:00");
+            let z50 = 570.0 + noise(&mut seed, 8.0);
+            let w = 80.0 - 0.05 * (28 - back) as f64 + noise(&mut seed, 0.3);
+            meas(&t, (w * 10.0).round() / 10.0, Some((z50, z50 * 0.89)))
+        })
+        .collect();
+    assert_eq!(files.len(), 24);
+
+    let out = run(&files, "2026-11-09");
+    let rates = &out.report.rates;
+    assert!(rates.weight_kg_per_week_28d.is_some());
+    assert!(rates.weight_pct_per_week_28d.is_some());
+    assert!(rates.fat_mass_kg_per_week_28d.is_some());
+    assert!(rates.lean_mass_kg_per_week_28d.is_some());
+    assert!(rates.weight_kg_per_week_14d.is_some());
+    assert!(
+        !out.report.flags.contains(&Flag::TrendReset),
+        "4 days is not a break"
+    );
+    assert_eq!(out.report.data_quality.coverage.days_measured_28d, 24);
+}
